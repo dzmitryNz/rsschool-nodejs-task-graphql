@@ -14,6 +14,8 @@ import {
   GraphQLBoolean,
 } from 'graphql';
 import { UUIDType } from './types/uuid.js';
+import depthLimit from 'graphql-depth-limit';
+import { parse, validate } from 'graphql';
 
 // ENUM
 const MemberTypeIdEnum = new GraphQLEnumType({
@@ -289,6 +291,14 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async handler(req) {
       const { query, variables } = req.body;
+
+      // Проверка глубины запроса
+      const ast = parse(query);
+      const errors = validate(schema, ast, [depthLimit(5)]);
+      if (errors.length > 0) {
+        return { errors: errors.map(e => ({ message: e.message })) };
+      }
+
       const result = await graphql({
         schema,
         source: query,
